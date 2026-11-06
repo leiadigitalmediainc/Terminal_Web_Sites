@@ -67,7 +67,7 @@ async function leagueNews(league) {
   const data = await fetchJson(`${API}/site/v2/sports/${league.api}/news?limit=10`);
   if (!data) return null;
   return (data.articles || []).map(a => ({ title: clean(a.headline), url: a.links && a.links.web && a.links.web.href }))
-    .filter(n => n.title && /^https?:///.test(n.url || ''));
+    .filter(n => n.title && /^https?:\/\//.test(n.url || ''));
 }
 
 async function buildLeague(league, outDir, dataDir) {
