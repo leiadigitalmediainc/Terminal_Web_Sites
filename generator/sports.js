@@ -2,7 +2,7 @@
 // T-Sports: every league works the same way, so adding one is one entry in LEAGUES.
 const fs = require('fs');
 const path = require('path');
-const { COLS, banners, Page, clean, cut, fetchJson, headlines, stamp } = require('./lib');
+const { COLS, banners, Page, clean, cut, fetchJson, stamp } = require('./lib');
 
 const API = 'https://site.api.espn.com/apis';
 const NOTICE = 'Logos are text interpretations used to identify teams.';
@@ -11,13 +11,13 @@ const NOTICE2 = 'Not affiliated with any team or league. Contact: TerminalWeb@pr
 const WINS_TABLE = { cols: [['W', 'wins'], ['L', 'losses'], ['PCT', 'winPercent'], ['GB', 'gamesBehind']], sort: 'winPercent' };
 const SOCCER_TABLE = { cols: [['GP', 'gamesPlayed'], ['W', 'wins'], ['D', 'ties'], ['L', 'losses'], ['PTS', 'points']], sort: 'points', noStreak: true };
 const LEAGUES = [
-  { id: 'nhl', name: 'NHL', sport: 'Hockey', api: 'hockey/nhl', rss: 'nhl', table: { cols: [['GP', 'gamesPlayed'], ['W', 'wins'], ['L', 'losses'], ['OT', 'otLosses'], ['PTS', 'points']], sort: 'points' } },
-  { id: 'nba', name: 'NBA', sport: 'Basketball', api: 'basketball/nba', rss: 'nba', table: WINS_TABLE },
-  { id: 'mlb', name: 'MLB', sport: 'Baseball', api: 'baseball/mlb', rss: 'mlb', table: WINS_TABLE },
-  { id: 'nfl', name: 'NFL', sport: 'Football', api: 'football/nfl', rss: 'nfl', table: { cols: [['W', 'wins'], ['L', 'losses'], ['T', 'ties'], ['PCT', 'winPercent']], sort: 'winPercent' } },
-  { id: 'mls', name: 'MLS', sport: 'Soccer', api: 'soccer/usa.1', rss: 'soccer', table: SOCCER_TABLE },
-  { id: 'epl', name: 'EPL', sport: 'Premier League', api: 'soccer/eng.1', rss: 'soccer', table: SOCCER_TABLE },
-  { id: 'wnba', name: 'WNBA', sport: 'Women\'s Basketball', api: 'basketball/wnba', rss: 'wnba', table: WINS_TABLE }
+  { id: 'nhl', name: 'NHL', sport: 'Hockey', api: 'hockey/nhl', table: { cols: [['GP', 'gamesPlayed'], ['W', 'wins'], ['L', 'losses'], ['OT', 'otLosses'], ['PTS', 'points']], sort: 'points' } },
+  { id: 'nba', name: 'NBA', sport: 'Basketball', api: 'basketball/nba', table: WINS_TABLE },
+  { id: 'mlb', name: 'MLB', sport: 'Baseball', api: 'baseball/mlb', table: WINS_TABLE },
+  { id: 'nfl', name: 'NFL', sport: 'Football', api: 'football/nfl', table: { cols: [['W', 'wins'], ['L', 'losses'], ['T', 'ties'], ['PCT', 'winPercent']], sort: 'winPercent' } },
+  { id: 'mls', name: 'MLS', sport: 'Soccer', api: 'soccer/usa.1', table: SOCCER_TABLE },
+  { id: 'epl', name: 'EPL', sport: 'Premier League', api: 'soccer/eng.1', table: SOCCER_TABLE },
+  { id: 'wnba', name: 'WNBA', sport: 'Women\'s Basketball', api: 'basketball/wnba', table: WINS_TABLE }
 ];
 
 const stat = (entry, name) => { const s = entry.stats.find(x => x.name === name); return s ? s.displayValue : ''; };
@@ -61,11 +61,20 @@ const footer = (page, logos) => {
 };
 const unavailable = (page, what) => page.text(what + ' are being updated. Please check back soon.');
 
+// ESPN's RSS feeds come back empty for GitHub's servers, so headlines use the same data
+// service as the scores.
+async function leagueNews(league) {
+  const data = await fetchJson(`${API}/site/v2/sports/${league.api}/news?limit=10`);
+  if (!data) return null;
+  return (data.articles || []).map(a => ({ title: clean(a.headline), url: a.links && a.links.web && a.links.web.href }))
+    .filter(n => n.title && /^https?:///.test(n.url || ''));
+}
+
 async function buildLeague(league, outDir, dataDir) {
   const [scoreboard, standings, news] = await Promise.all([
     fetchJson(`${API}/site/v2/sports/${league.api}/scoreboard`),
     fetchJson(`${API}/v2/sports/${league.api}/standings?level=3`),
-    headlines(`https://www.espn.com/espn/rss/${league.rss}/news`, 10)
+    leagueNews(league)
   ]);
   const dir = 'sports/' + league.id + '/';
   const logoFile = path.join(dataDir, 'logos', league.id + '.json');
@@ -129,14 +138,17 @@ async function buildLeague(league, outDir, dataDir) {
     footer(p, true);
     p.write(outDir);
   }
-  return { league, games, pages: sorted.length + 3 };
+  return { league, games, news: news || [], pages: sorted.length + 3 };
 }
 
 async function buildSports(outDir, dataDir) {
-  const [results, top] = await Promise.all([
-    Promise.all(LEAGUES.map(l => buildLeague(l, outDir, dataDir))),
-    headlines('https://www.espn.com/espn/rss/news', 10)
-  ]);
+  const results = await Promise.all(LEAGUES.map(l => buildLeague(l, outDir, dataDir)));
+  // top headlines: the newest two from each league, taking turns
+  const seen = new Set(), top = [];
+  for (let i = 0; i < 2; i++) for (const r of results) {
+    const n = r.news[i];
+    if (n && !seen.has(n.url)) { seen.add(n.url); top.push(n); }
+  }
   const hub = new Page('sports/index.html', 'T-Sports');
   nav(hub);
   hub.text('TOP HEADLINES').rule();
