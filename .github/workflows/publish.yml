@@ -1,0 +1,53 @@
+name: Update sites
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node generator/build.js
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      # GitHub pauses scheduled jobs in a repo with no activity for 60 days, so one small
+      # commit a day keeps the sites updating with nobody touching them.
+      - name: Daily heartbeat
+        run: |
+          date -u +%Y-%m-%d > data/last-run.txt
+          if ! git diff --quiet -- data/last-run.txt 2>/dev/null || [ -z "$(git ls-files data/last-run.txt)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/last-run.txt
+            git commit -m "Daily heartbeat"
+            git push
+          fi
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
