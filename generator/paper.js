@@ -62,6 +62,7 @@ function lead(page, story, picture) {
       ...(story.summary ? wrap(brief(story.summary, 170), w) : []), '',
       readLink(story)
     ];
+    if (picture.pixels) page.pictures.push({ row: page.rows.length, col: 0, rows: picture.length, cols: x - 2, ...picture.pixels });
     const left = [...picture, cut('Picture: ' + (story.credit || story.source || 'source'), x - 2)];
     for (let i = 0; i < Math.max(left.length, words.length); i++) {
       const parts = [left[i] || ''];

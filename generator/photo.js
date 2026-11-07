@@ -1,8 +1,9 @@
 'use strict';
 // Turns a story's picture into a small poster: the photo is smoothed into flat shapes and cut
 // down to three tones, then drawn with half blocks (two dots per character) and one shade.
-// Bold shapes read better in a single colour than fine detail, and match the team logos.
-// Only the text is published, never the picture.
+// That text is the fallback. Terminal Web shows `pixels` over it instead: the same picture as
+// 128 x 72 pixel art in four shades, drawn in the reader's own colour. Neither ever publishes
+// the picture itself.
 //
 // Set ENABLED to false to take every picture off the site on the next update.
 const ENABLED = true;
@@ -10,8 +11,28 @@ const WIDTH = 44;
 const ROWS = 12;
 const SMOOTH = 7;                 // how strongly detail is melted into flat shapes
 const SHARE = [0.42, 0.74];       // how much of a picture is dark, and how much is dark or mid
+const PIXELS_W = 128, PIXELS_H = 72, LEVELS = 4;
+const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
 let sharp = null;
 try { sharp = require('sharp'); } catch (e) { /* pages simply carry no pictures */ }
+
+async function pixels(source) {
+  const flat = await sharp(source).resize(PIXELS_W * 3, PIXELS_H * 3, { fit: 'cover', position: sharp.strategy.attention })
+    .flatten({ background: '#000' }).grayscale().normalise({ lower: 1, upper: 99 }).median(3).png().toBuffer();
+  const { data, info } = await sharp(flat).resize(PIXELS_W, PIXELS_H, { kernel: 'cubic' }).grayscale().raw().toBuffer({ resolveWithObject: true });
+  const values = [];
+  for (let i = 0; i < PIXELS_W * PIXELS_H; i++) values.push(data[i * info.channels]);
+  const sorted = values.slice().sort((a, b) => a - b);
+  const rank = (v) => { let lo = 0, hi = sorted.length; while (lo < hi) { const m = (lo + hi) >> 1; if (sorted[m] < v) lo = m + 1; else hi = m; } return lo / sorted.length; };
+  const bytes = Buffer.alloc(PIXELS_W * PIXELS_H / 4);
+  values.forEach((v, i) => {
+    const x = i % PIXELS_W, y = Math.floor(i / PIXELS_W);
+    const q = (0.5 * rank(v) + 0.5 * v / 255) * (LEVELS - 1), base = Math.floor(q);
+    const tone = Math.min(LEVELS - 1, base + (q - base > (BAYER[y % 4][x % 4] + 0.5) / 16 ? 1 : 0));
+    bytes[i >> 2] |= tone << ((i & 3) * 2);
+  });
+  return { w: PIXELS_W, h: PIXELS_H, data: bytes.toString('base64') };
+}
 
 // A picture that cannot be fetched or read is left out: stories never depend on one.
 async function photo(url) {
@@ -20,7 +41,8 @@ async function photo(url) {
     const res = await fetch(url, { headers: { 'User-Agent': 'TerminalWebSites/1.0' }, signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     const dotsHigh = ROWS * 2;
-    const flat = await sharp(Buffer.from(await res.arrayBuffer()))
+    const source = Buffer.from(await res.arrayBuffer());
+    const flat = await sharp(source)
       .resize(WIDTH * 6, dotsHigh * 6, { fit: 'cover', position: sharp.strategy.attention })
       .flatten({ background: '#000' }).grayscale().normalise({ lower: 1, upper: 99 }).median(SMOOTH)
       .png().toBuffer();
@@ -44,6 +66,7 @@ async function photo(url) {
       }
       lines.push(s);
     }
+    lines.pixels = await pixels(source);
     return lines;
   } catch (e) { return null; }
 }

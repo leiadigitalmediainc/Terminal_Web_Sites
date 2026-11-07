@@ -24,7 +24,7 @@ const isSafeHref = (h) => /^(https?:\/\/\S+|(\.\.?\/)*[a-z0-9-]+(\/[a-z0-9-]+)*\
 
 class Page {
   // `file` is the path inside the site, like "sports/nhl/index.html"
-  constructor(file, title) { this.file = file; this.title = title; this.rows = []; }
+  constructor(file, title) { this.file = file; this.title = title; this.rows = []; this.pictures = []; }
   get root() { return '../'.repeat(this.file.split('/').length - 1) || './'; }
   text(...lines) { lines.forEach(l => this.rows.push([String(l)])); return this; }
   rule(ch = '─') { return this.text(ch.repeat(COLS)); }
@@ -58,6 +58,7 @@ class Page {
     return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
       '<meta name="generator" content="Terminal Web Builder">\n' +
+      this.pictures.map(p => '<meta name="twb-picture" content="' + [p.row, p.col, p.rows, p.cols, p.w, p.h, p.data].join(',') + '">\n').join('') +
       '<title>' + esc(this.title) + '</title>\n' +
       '<style>\nbody{background:#000;color:#c68039;margin:0;padding:16px}\na{color:#5c9cc7}\n' +
       'pre{font-family:Consolas,"Courier New",monospace;font-size:16px;line-height:1.15;margin:0;overflow-x:auto}\n' +
