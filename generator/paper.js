@@ -1,7 +1,7 @@
 'use strict';
 // The newspaper's layout: masthead, section menu, lead story, frames, and stories that flow
 // from one column into the next. Every page of the paper is made from these.
-const { COLS, banners } = require('./lib');
+const { COLS, banners, cut } = require('./lib');
 
 const MENU = [
   [['Front Page', 'index.html'], ['World', 'news/world.html'], ['Canada', 'news/canada.html'], ['USA', 'news/usa.html'], ['UK', 'news/uk.html'], ['Local', 'news/local.html']],
@@ -53,10 +53,23 @@ function sectionBar(page, name) {
 
 const readLink = (s) => ({ label: 'Read at ' + (s.source || 'source'), href: s.url });
 
+// The main story. With a picture, the words sit beside it like a real front page.
 function lead(page, story, picture) {
   if (picture) {
-    page.text(...picture);
-    page.text('Picture: ' + (story.credit || story.source || 'source'), '');
+    const x = Math.max(...picture.map(width)) + 2, w = COLS - x;
+    const words = [
+      ...wrap(story.title.toUpperCase(), w).map(l => ({ bold: l })), '',
+      ...(story.summary ? wrap(brief(story.summary, 170), w) : []), '',
+      readLink(story)
+    ];
+    const left = [...picture, cut('Picture: ' + (story.credit || story.source || 'source'), x - 2)];
+    for (let i = 0; i < Math.max(left.length, words.length); i++) {
+      const parts = [left[i] || ''];
+      if (words[i]) parts.push({ at: x }, words[i]);
+      page.row(...parts);
+    }
+    page.blank();
+    return;
   }
   wrap(story.title.toUpperCase(), COLS).forEach(l => page.row({ bold: l }));
   page.blank();
@@ -66,7 +79,7 @@ function lead(page, story, picture) {
 }
 
 // Pours stories through columns like a newspaper: a story that runs out of room carries on
-// at the top of the next column. A headline never sits alone at the foot of a column.
+// at the top of the next column. A headline is never split, or left alone at a column's foot.
 // Returns null if the stories do not fit at this height.
 function pour(blocks, count, height) {
   const cols = [[]];
@@ -74,7 +87,8 @@ function pour(blocks, count, height) {
     for (let i = 0; i < block.length; i++) {
       let col = cols[cols.length - 1];
       const room = height - col.length;
-      if (room <= 0 || (i === 0 && room < Math.min(4, block.length - 1))) {
+      const headline = block.filter(l => l.bold !== undefined).length;
+      if (room <= 0 || (i === 0 && room < Math.min(headline + 2, block.length - 1))) {
         if (block[i].href) return null;    // a story's link must not sit alone in a new column
         col = []; cols.push(col);
       }

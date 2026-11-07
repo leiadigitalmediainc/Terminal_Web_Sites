@@ -8,8 +8,10 @@ result with GitHub Pages. Nobody needs to touch it.
 - **Sports**: scores, standings and teams for the NHL, NBA, MLB, NFL, MLS, Premier League and WNBA.
 - **Layout** (`generator/paper.js`): masthead, section menu, lead story, framed boxes, and
   stories that flow from one column into the next.
-- **Pictures** (`generator/photo.js`): each section's lead picture becomes text in five shades.
-  Only the text is published. Set `ENABLED` to `false` there to remove every picture.
+- **Pictures** (`generator/photo.js`): each section's lead picture becomes small text art, with
+  every character chosen by its shape (`generator/glyphs.json` holds what each character looks
+  like in the page's font). Only the text is published. Set `ENABLED` to `false` there to remove
+  every picture.
 
 `status.txt` on the published site shows the last update and any source that failed. If most
 sources fail, the last good site stays up. A picture that fails is simply left out.
