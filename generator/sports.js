@@ -1,8 +1,10 @@
 'use strict';
-// T-Sports: every league works the same way, so adding one is one entry in LEAGUES.
+// The sports section: every league works the same way, so adding one is one entry in LEAGUES.
 const fs = require('fs');
 const path = require('path');
-const { COLS, banners, Page, clean, cut, fetchJson, stamp } = require('./lib');
+const { COLS, Page, clean, cut, fetchJson, stamp } = require('./lib');
+const { masthead, sectionBar, lead, columns, box } = require('./paper');
+const { photo } = require('./photo');
 
 const API = 'https://site.api.espn.com/apis';
 const NOTICE = 'Logos are text interpretations used to identify teams.';
@@ -43,17 +45,10 @@ function game(ev) {
 
 function nav(page, league) {
   const r = page.root + 'sports/';
-  page.text(...banners.sports);
-  page.bar([{ label: 'Sports', href: r + 'index.html' }]
-    .concat(LEAGUES.map(l => ({ label: l.name, href: r + l.id + '/index.html' })))
-    .concat([{ label: 'News', href: page.root + 'news/index.html' }, { label: 'Home', href: page.root + 'index.html' }]), 1);
-  page.rule('═');
-  if (league) {
-    page.text(league.sport.toUpperCase() + ' - ' + league.name);
-    page.bar([{ label: 'Scores', href: 'index.html' }, { label: 'Standings', href: 'standings.html' }, { label: 'Teams', href: 'teams.html' }]);
-    page.rule();
-  }
-  page.blank();
+  masthead(page, league ? 'SPORTS - ' + league.name : 'SPORTS');
+  page.bar([{ label: 'All Sports', href: r + 'index.html' }].concat(LEAGUES.map(l => ({ label: l.name, href: r + l.id + '/index.html' }))), 1);
+  if (league) page.bar([{ label: 'Scores', href: 'index.html' }, { label: 'Standings', href: 'standings.html' }, { label: 'Teams', href: 'teams.html' }]);
+  page.rule().blank();
 }
 const footer = (page, logos) => {
   page.blank().rule().text('Scores and standings: ESPN. Updated ' + stamp() + '.');
@@ -66,7 +61,10 @@ const unavailable = (page, what) => page.text(what + ' are being updated. Please
 async function leagueNews(league) {
   const data = await fetchJson(`${API}/site/v2/sports/${league.api}/news?limit=10`);
   if (!data) return null;
-  return (data.articles || []).map(a => ({ title: clean(a.headline), url: a.links && a.links.web && a.links.web.href }))
+  return (data.articles || []).map(a => {
+    const image = (a.images || [])[0] || {};
+    return { title: clean(a.headline), url: a.links && a.links.web && a.links.web.href, summary: clean(a.description), image: image.url || '', credit: clean(image.credit), source: 'ESPN' };
+  })
     .filter(n => n.title && /^https?:\/\//.test(n.url || ''));
 }
 
@@ -83,13 +81,15 @@ async function buildLeague(league, outDir, dataDir) {
 
   const home = new Page(dir + 'index.html', 'T-Sports ' + league.name);
   nav(home, league);
-  home.text('LATEST GAMES', '');
+  const stories = news || [];
+  if (stories.length) lead(home, stories[0], await photo(stories[0].image));
+  else unavailable(home, 'Headlines');
+  sectionBar(home, 'LATEST GAMES');
   if (!games) unavailable(home, 'Scores');
   else if (!games.length) home.text('No games right now.');
   else home.text(...games.map(g => g.line));
-  home.blank().text('HEADLINES').rule();
-  if (news && news.length) news.forEach(n => home.link(n.title, n.url));
-  else unavailable(home, 'Headlines');
+  home.blank();
+  if (stories.length > 1) { sectionBar(home, 'MORE ' + league.name + ' STORIES'); columns(home, stories.slice(1, 10)); }
   footer(home);
   home.write(outDir);
 
@@ -141,6 +141,13 @@ async function buildLeague(league, outDir, dataDir) {
   return { league, games, news: news || [], pages: sorted.length + 3 };
 }
 
+// One league's latest games in a frame, used on the sports page and the front page.
+function scoreBox(page, result, href, count) {
+  const list = (result.games || []).slice().sort((a, b) => Number(b.live) - Number(a.live)).slice(0, count);
+  box(page, result.league.sport.toUpperCase(), [[{ label: 'All ' + result.league.name + ' scores', href }]]
+    .concat(list.length ? list.map(g => [g.line]) : [['No games right now.']]));
+}
+
 async function buildSports(outDir, dataDir) {
   const results = await Promise.all(LEAGUES.map(l => buildLeague(l, outDir, dataDir)));
   // top headlines: the newest two from each league, taking turns
@@ -149,22 +156,16 @@ async function buildSports(outDir, dataDir) {
     const n = r.news[i];
     if (n && !seen.has(n.url)) { seen.add(n.url); top.push(n); }
   }
-  const hub = new Page('sports/index.html', 'T-Sports');
+  const hub = new Page('sports/index.html', 'T-News Sports');
   nav(hub);
-  hub.text('TOP HEADLINES').rule();
-  if (top && top.length) top.forEach(n => hub.link(n.title, n.url));
+  if (top.length) lead(hub, top[0], await photo(top[0].image));
   else unavailable(hub, 'Headlines');
-  hub.blank();
-  for (const r of results) {
-    hub.link(r.league.sport, r.league.id + '/index.html');
-    const list = (r.games || []).slice().sort((a, b) => Number(b.live) - Number(a.live)).slice(0, 4);
-    if (list.length) hub.text(...list.map(g => '  ' + g.line));
-    else hub.text('  No games right now.');
-    hub.blank();
-  }
+  if (top.length > 1) { sectionBar(hub, 'TOP STORIES'); columns(hub, top.slice(1, 10)); }
+  sectionBar(hub, 'SCOREBOARD');
+  results.forEach(r => scoreBox(hub, r, r.league.id + '/index.html', 4));
   footer(hub);
   hub.write(outDir);
-  return { top, pages: results.reduce((n, r) => n + r.pages, 1) };
+  return { top, results, pages: results.reduce((n, r) => n + r.pages, 1) };
 }
 
-module.exports = { buildSports };
+module.exports = { buildSports, scoreBox };

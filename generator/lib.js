@@ -46,6 +46,8 @@ class Page {
       return parts.map(p => {
         if (typeof p === 'string') return add(p);
         if (p.to) return add(' '.repeat(Math.max(2, p.to - col)));   // jump to a column
+        if (p.at !== undefined) return add(' '.repeat(Math.max(0, p.at - col)));   // same, no minimum gap
+        if (p.bold !== undefined) { col += Array.from(p.bold).length; return '<b>' + esc(p.bold) + '</b>'; }
         if (!isSafeHref(p.href)) return add(p.label);
         n++;
         const words = p.label + '[' + n + ']';
@@ -94,12 +96,18 @@ const tag = (item, name) => {
   const m = new RegExp('<' + name + '(?:\\s[^>]*)?>\\s*(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?\\s*</' + name + '>').exec(item);
   return m ? m[1] : '';
 };
+// The picture a feed offers for a story, if any. BBC thumbnails come in larger sizes too.
+function imageOf(item) {
+  const m = /<media:thumbnail[^>]*url="([^"]+)/.exec(item) || /<media:content[^>]*url="([^"]+)/.exec(item) ||
+    /<enclosure[^>]*url="([^"]+)/.exec(item) || /<img[^>]*src=['"]([^'"]+)/.exec(item);
+  return m ? m[1].replace(/&amp;/g, '&').replace('/ace/standard/240/', '/ace/standard/640/') : '';
+}
 async function headlines(url, limit = 15) {
   const xml = await fetchText(url);
   if (xml == null) return null;
   const items = xml.match(/<item[\s>][\s\S]*?<\/item>/g) || [];
   if (!items.length) problems.push(url + ': no stories');
-  return items.map(i => ({ title: clean(tag(i, 'title')), url: clean(tag(i, 'link')) }))
+  return items.map(i => ({ title: clean(tag(i, 'title')), url: clean(tag(i, 'link')), summary: clean(tag(i, 'description')), image: imageOf(i) }))
     .filter(n => n.title && /^https?:\/\//.test(n.url)).slice(0, limit);
 }
 const stamp = () => new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });

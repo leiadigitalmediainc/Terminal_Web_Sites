@@ -1,0 +1,11 @@
+{
+  "name": "terminal-web-sites",
+  "private": true,
+  "description": "Builds the Terminal Web newspaper",
+  "scripts": {
+    "build": "node generator/build.js"
+  },
+  "dependencies": {
+    "sharp": "^0.35.5"
+  }
+}
