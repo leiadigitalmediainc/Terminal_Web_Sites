@@ -1,0 +1,17 @@
+name: Report a site in the Terminal Directory
+description: Tell us about a listed site that is harmful, illegal or not what it claims to be.
+title: "Report a site"
+body:
+  - type: input
+    id: url
+    attributes:
+      label: Site to report
+      placeholder: https://example.github.io/site/
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What is wrong with it?
+    validations:
+      required: true

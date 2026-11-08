@@ -1,0 +1,17 @@
+name: Add a site to the Terminal Directory
+description: List a site made with Terminal Web Builder, so Terminal Web users can find it.
+title: "Add a site"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Only sites made with **Terminal Web Builder** can be added. A robot checks the site
+        and answers here within a few minutes.
+  - type: input
+    id: url
+    attributes:
+      label: Site address
+      description: The full address of your site's first page.
+      placeholder: https://yourname.github.io/my-site/
+    validations:
+      required: true

@@ -1,0 +1,50 @@
+name: Terminal Directory
+
+# Someone adds a site with the "Add a site" form, or a maintainer labels an issue "delist".
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: directory
+  cancel-in-progress: false
+
+jobs:
+  handle:
+    if: github.event.action == 'opened' || github.event.label.name == 'delist'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # the issue text is passed in as data and only ever read by the script
+      - name: Check the site
+        id: check
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ACTION: ${{ github.event.action }}
+        run: node generator/submit.js
+      - name: Save the list
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add directory/sites.json
+          git commit -m "Terminal Directory: update the list (#${{ github.event.issue.number }})"
+          git pull --rebase
+          git push
+      - name: Answer
+        if: steps.check.outputs.reply == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number }}
+          CLOSE: ${{ steps.check.outputs.close }}
+        run: |
+          gh issue comment "$NUMBER" --body-file reply.md -R "$GITHUB_REPOSITORY"
+          if [ "$CLOSE" = "true" ]; then gh issue close "$NUMBER" -R "$GITHUB_REPOSITORY"; fi

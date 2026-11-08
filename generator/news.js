@@ -98,6 +98,7 @@ async function buildNews(outDir, sports) {
 
   // Front page: the biggest story, then a little of every section.
   const front = new Page('index.html', 'T-News');
+  front.description = 'A newspaper for Terminal Web: local, Canadian, US and world news, sports scores and standings, updated all day.';
   masthead(front, 'Front Page');
   front.blank();
   const stories = (id) => loaded.find(l => l.section.id === id).stories;

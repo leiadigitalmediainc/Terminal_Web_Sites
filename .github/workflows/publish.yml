@@ -31,15 +31,17 @@ jobs:
         with:
           path: public
       # GitHub pauses scheduled jobs in a repo with no activity for 60 days, so one small
-      # commit a day keeps the sites updating with nobody touching them.
-      - name: Daily heartbeat
+      # commit a day keeps the sites updating with nobody touching them. The same commit saves
+      # the directory's pages, read once a day, so the next runs do not read them again.
+      - name: Save the day's work
         run: |
           date -u +%Y-%m-%d > data/last-run.txt
-          if ! git diff --quiet -- data/last-run.txt 2>/dev/null || [ -z "$(git ls-files data/last-run.txt)" ]; then
+          git add data/last-run.txt data/directory-index.json 2>/dev/null || git add data/last-run.txt
+          if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add data/last-run.txt
             git commit -m "Daily heartbeat"
+            git pull --rebase
             git push
           fi
 

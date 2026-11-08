@@ -5,6 +5,7 @@ const path = require('path');
 const { problems, attemptCount } = require('./lib');
 const { buildSports } = require('./sports');
 const { buildNews } = require('./news');
+const { buildDirectory } = require('./directory');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'public');
@@ -15,10 +16,13 @@ const DATA = path.join(ROOT, 'data');
   fs.mkdirSync(OUT, { recursive: true });
   const sports = await buildSports(OUT, DATA);
   const news = await buildNews(OUT, sports);
+  // the directory never stops the paper: its own failures only leave it out of date
+  let directory = { sites: 0 };
+  try { directory = await buildDirectory(OUT, DATA); } catch (e) { console.error('Directory:', e.message); }
 
   fs.writeFileSync(path.join(OUT, 'status.txt'), 'Updated ' + new Date().toISOString() + '\n' + attemptCount() + ' sources tried, ' + problems.length + ' problems\n' + problems.join('\n') + '\n');
   fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
-  console.log((sports.pages + news.pages) + ' pages, ' + news.localAreas + ' local areas, ' + attemptCount() + ' sources, ' + problems.length + ' problems');
+  console.log((sports.pages + news.pages) + ' pages, ' + news.localAreas + ' local areas, ' + directory.sites + ' directory sites, ' + attemptCount() + ' sources, ' + problems.length + ' problems');
   problems.forEach(p => console.log('  ' + p));
   // If most sources failed, stop here: the last good site stays up instead of an empty one.
   if (problems.length > attemptCount() / 2) { console.error('Too many sources failed; keeping the published site.'); process.exit(1); }
