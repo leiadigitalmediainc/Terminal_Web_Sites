@@ -38,7 +38,9 @@ function masthead(page, section) {
   const inner = COLS - 2;
   const date = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Toronto', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   page.text('╔' + '═'.repeat(inner) + '╗');
-  banners.news.forEach(l => page.text('║' + centered(l, inner) + '║'));
+  // pad every line to the same width first, so the letters stay lined up when centred
+  const bannerWidth = Math.max(...banners.news.map(width));
+  banners.news.forEach(l => page.text('║' + centered(l + ' '.repeat(bannerWidth - width(l)), inner) + '║'));
   page.text('╟' + '─'.repeat(inner) + '╢');
   page.text('║ ' + date + ' '.repeat(Math.max(1, inner - 2 - width(date) - width(section))) + section + ' ║');
   page.text('╚' + '═'.repeat(inner) + '╝');
