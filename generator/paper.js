@@ -136,9 +136,9 @@ function columns(page, stories, count = 2, gap = 2) {
 }
 
 // A framed box. `rows` are lists of parts, so frames can hold links.
-function box(page, title, rows) {
+function box(page, title, rows, { center = false } = {}) {
   page.text('┌─ ' + title + ' ' + '─'.repeat(Math.max(0, COLS - width(title) - 5)) + '┐');
-  rows.forEach(parts => page.row('│ ', ...parts, { at: COLS - 1 }, '│'));
+  rows.forEach(parts => page.row('│ ', ...(center ? [{ center: COLS - 4 }] : []), ...parts, { at: COLS - 1 }, '│'));
   page.text('└' + '─'.repeat(COLS - 2) + '┘');
 }
 

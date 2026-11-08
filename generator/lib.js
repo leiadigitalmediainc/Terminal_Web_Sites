@@ -43,8 +43,21 @@ class Page {
     const body = this.rows.map(parts => {
       let col = 0;
       const add = (s) => { col += Array.from(s).length; return esc(s); };
-      return parts.map(p => {
+      // the width of the parts after index i, up to the next column jump, numbering links from n
+      const span = (i) => {
+        let w = 0, k = n;
+        for (const p of parts.slice(i + 1)) {
+          if (typeof p === 'string') w += Array.from(p).length;
+          else if (p.to || p.at !== undefined || p.center) break;
+          else if (p.bold !== undefined) w += Array.from(p.bold).length;
+          else if (!isSafeHref(p.href)) w += Array.from(p.label).length;
+          else w += Array.from(p.label + '[' + (++k) + ']').length;
+        }
+        return w;
+      };
+      return parts.map((p, i) => {
         if (typeof p === 'string') return add(p);
+        if (p.center) return add(' '.repeat(Math.max(0, Math.floor((p.center - span(i)) / 2))));   // centre what follows in this many columns
         if (p.to) return add(' '.repeat(Math.max(2, p.to - col)));   // jump to a column
         if (p.at !== undefined) return add(' '.repeat(Math.max(0, p.at - col)));   // same, no minimum gap
         if (p.bold !== undefined) { col += Array.from(p.bold).length; return '<b>' + esc(p.bold) + '</b>'; }

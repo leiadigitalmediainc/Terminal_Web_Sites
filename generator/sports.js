@@ -145,7 +145,7 @@ async function buildLeague(league, outDir, dataDir) {
 function scoreBox(page, result, href, count) {
   const list = (result.games || []).slice().sort((a, b) => Number(b.live) - Number(a.live)).slice(0, count);
   box(page, result.league.sport.toUpperCase(), [[{ label: 'All ' + result.league.name + ' scores', href }]]
-    .concat(list.length ? list.map(g => [g.line]) : [['No games right now.']]));
+    .concat(list.length ? list.map(g => [g.line]) : [['No games right now.']]), { center: true });
 }
 
 async function buildSports(outDir, dataDir) {
