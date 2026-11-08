@@ -7,7 +7,7 @@
 //
 // Set ENABLED to false to take every picture off the site on the next update.
 const ENABLED = true;
-const WIDTH = 44;
+const WIDTH = 42;   // leaves 32 characters beside it: room for "Would you like to know more?[nn]"
 const ROWS = 12;
 const SMOOTH = 7;                 // how strongly detail is melted into flat shapes
 const SHARE = [0.42, 0.74];       // how much of a picture is dark, and how much is dark or mid

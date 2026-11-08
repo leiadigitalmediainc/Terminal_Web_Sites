@@ -52,7 +52,8 @@ class Page {
         n++;
         const words = p.label + '[' + n + ']';
         col += Array.from(words).length;
-        return '<a href="' + esc(p.href) + '"><u>' + esc(words) + '</u></a>';
+        const label = '<u>' + esc(words) + '</u>';
+        return '<a href="' + esc(p.href) + '">' + (p.strong ? '<b>' + label + '</b>' : label) + '</a>';
       }).join('').replace(/\s+$/, '');
     }).join('\n');
     return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n' +

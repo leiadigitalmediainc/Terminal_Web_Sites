@@ -59,9 +59,9 @@ function credit(s) {
   return [s.author && !/staff$/i.test(s.author) ? 'By ' + s.author : '', s.source || 'Source', when].filter(Boolean).join(' · ');
 }
 // "Would you like to know more?" - every blurb's link to the whole story, Starship Troopers style.
-const PROMPT = 'Would you like to';
-const moreLink = (s) => ({ label: 'know more?', href: s.url });
-const readMore = (s, w) => (w >= 32 ? [{ label: 'Would you like to know more?', href: s.url }] : [PROMPT, moreLink(s)]);
+const PROMPT = { bold: 'Would you like to' };
+const moreLink = (s) => ({ label: 'know more?', href: s.url, strong: true });
+const readMore = (s, w) => (w >= 32 ? [{ label: 'Would you like to know more?', href: s.url, strong: true }] : [PROMPT, moreLink(s)]);
 
 // The main story. With a picture, the words sit beside it like a real front page.
 function lead(page, story, picture) {
@@ -86,7 +86,7 @@ function lead(page, story, picture) {
   wrap(story.title.toUpperCase(), COLS).forEach(l => page.row({ bold: l }));
   page.text(...wrap(credit(story), COLS), '');
   if (story.summary) page.text(...wrap(brief(story.summary), COLS), '');
-  readMore(story, COLS).forEach(p => (typeof p === 'string' ? page.text(p) : page.row(p)));
+  readMore(story, COLS).forEach(p => page.row(p));
   page.blank();
 }
 
@@ -99,9 +99,9 @@ function pour(blocks, count, height) {
     for (let i = 0; i < block.length; i++) {
       let col = cols[cols.length - 1];
       const room = height - col.length;
-      const headline = block.filter(l => l.bold !== undefined).length;
+      const headline = block.findIndex(l => l.bold === undefined);
       // the prompt and its link stay together
-      const prompt = block[i] === PROMPT && room < 2;
+      const prompt = block[i] === PROMPT && room < 2;   // the prompt and its link stay together
       if (room <= 0 || prompt || (i === 0 && room < Math.min(headline + 2, block.length - 1))) {
         if (block[i].href) return null;    // a story's link must not sit alone in a new column
         col = []; cols.push(col);
@@ -114,13 +114,14 @@ function pour(blocks, count, height) {
   return cols;
 }
 
-function columns(page, stories, count = 3, gap = 2) {
+// Two columns, so "Would you like to know more?" always fits on one line as one link.
+function columns(page, stories, count = 2, gap = 2) {
   const w = Math.floor((COLS - gap * (count - 1)) / count);
   const blocks = stories.map(s => [
     ...wrap(s.title, w).map(l => ({ bold: l })),
     ...wrap(credit(s), w),
     ...(s.summary ? wrap(brief(s.summary, 160), w) : []),
-    ...readMore(s, w), ''
+    '', ...readMore(s, w), ''
   ]);
   const total = blocks.reduce((n, b) => n + b.length, 0);
   let height = Math.ceil(total / count), cols = pour(blocks, count, height);
