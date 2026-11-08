@@ -108,7 +108,8 @@ async function headlines(url, limit = 15) {
   if (xml == null) return null;
   const items = xml.match(/<item[\s>][\s\S]*?<\/item>/g) || [];
   if (!items.length) problems.push(url + ': no stories');
-  return items.map(i => ({ title: clean(tag(i, 'title')), url: clean(tag(i, 'link')), summary: clean(tag(i, 'description')), image: imageOf(i) }))
+  return items.map(i => ({ title: clean(tag(i, 'title')), url: clean(tag(i, 'link')), summary: clean(tag(i, 'description')), image: imageOf(i),
+    author: clean(tag(i, 'dc:creator') || tag(i, 'author')).replace(/^[^s@]+@[^s@]+s*((.*))$/, '$1'), date: clean(tag(i, 'pubDate')) }))
     .filter(n => n.title && /^https?:\/\//.test(n.url)).slice(0, limit);
 }
 const stamp = () => new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });

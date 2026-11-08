@@ -53,16 +53,25 @@ function sectionBar(page, name) {
   page.blank();
 }
 
-const readLink = (s) => ({ label: 'Read at ' + (s.source || 'source'), href: s.url });
+// Every story says who wrote it (when the feed tells us), who published it, and when.
+function credit(s) {
+  const when = s.date && !isNaN(new Date(s.date)) ? new Date(s.date).toLocaleDateString('en-CA', { timeZone: 'America/Toronto', month: 'short', day: 'numeric' }) : '';
+  return [s.author && !/staff$/i.test(s.author) ? 'By ' + s.author : '', s.source || 'Source', when].filter(Boolean).join(' · ');
+}
+// "Would you like to know more?" - every blurb's link to the whole story, Starship Troopers style.
+const PROMPT = 'Would you like to';
+const moreLink = (s) => ({ label: 'know more?', href: s.url });
+const readMore = (s, w) => (w >= 32 ? [{ label: 'Would you like to know more?', href: s.url }] : [PROMPT, moreLink(s)]);
 
 // The main story. With a picture, the words sit beside it like a real front page.
 function lead(page, story, picture) {
   if (picture) {
     const x = Math.max(...picture.map(width)) + 2, w = COLS - x;
     const words = [
-      ...wrap(story.title.toUpperCase(), w).map(l => ({ bold: l })), '',
+      ...wrap(story.title.toUpperCase(), w).map(l => ({ bold: l })),
+      ...wrap(credit(story), w), '',
       ...(story.summary ? wrap(brief(story.summary, 170), w) : []), '',
-      readLink(story)
+      ...readMore(story, w)
     ];
     if (picture.pixels) page.pictures.push({ row: page.rows.length, col: 0, rows: picture.length, cols: x - 2, ...picture.pixels });
     const left = [...picture, cut('Picture: ' + (story.credit || story.source || 'source'), x - 2)];
@@ -75,9 +84,9 @@ function lead(page, story, picture) {
     return;
   }
   wrap(story.title.toUpperCase(), COLS).forEach(l => page.row({ bold: l }));
-  page.blank();
+  page.text(...wrap(credit(story), COLS), '');
   if (story.summary) page.text(...wrap(brief(story.summary), COLS), '');
-  page.row(readLink(story));
+  readMore(story, COLS).forEach(p => (typeof p === 'string' ? page.text(p) : page.row(p)));
   page.blank();
 }
 
@@ -91,7 +100,9 @@ function pour(blocks, count, height) {
       let col = cols[cols.length - 1];
       const room = height - col.length;
       const headline = block.filter(l => l.bold !== undefined).length;
-      if (room <= 0 || (i === 0 && room < Math.min(headline + 2, block.length - 1))) {
+      // the prompt and its link stay together
+      const prompt = block[i] === PROMPT && room < 2;
+      if (room <= 0 || prompt || (i === 0 && room < Math.min(headline + 2, block.length - 1))) {
         if (block[i].href) return null;    // a story's link must not sit alone in a new column
         col = []; cols.push(col);
       }
@@ -107,8 +118,9 @@ function columns(page, stories, count = 3, gap = 2) {
   const w = Math.floor((COLS - gap * (count - 1)) / count);
   const blocks = stories.map(s => [
     ...wrap(s.title, w).map(l => ({ bold: l })),
+    ...wrap(credit(s), w),
     ...(s.summary ? wrap(brief(s.summary, 160), w) : []),
-    readLink(s), ''
+    ...readMore(s, w), ''
   ]);
   const total = blocks.reduce((n, b) => n + b.length, 0);
   let height = Math.ceil(total / count), cols = pour(blocks, count, height);

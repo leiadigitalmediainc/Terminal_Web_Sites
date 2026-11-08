@@ -63,7 +63,7 @@ async function leagueNews(league) {
   if (!data) return null;
   return (data.articles || []).map(a => {
     const image = (a.images || [])[0] || {};
-    return { title: clean(a.headline), url: a.links && a.links.web && a.links.web.href, summary: clean(a.description), image: image.url || '', credit: clean(image.credit), source: 'ESPN' };
+    return { title: clean(a.headline), url: a.links && a.links.web && a.links.web.href, summary: clean(a.description), image: image.url || '', credit: clean(image.credit), source: 'ESPN', author: clean(a.byline), date: a.published || '' };
   })
     .filter(n => n.title && /^https?:\/\//.test(n.url || ''));
 }
