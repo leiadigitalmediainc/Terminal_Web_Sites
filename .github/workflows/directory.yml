@@ -1,6 +1,7 @@
 name: Terminal Directory
 
-# Someone adds a site with the "Add a site" form, or a maintainer labels an issue "delist".
+# Someone adds or reports a site with an issue form, or the directory's owner puts a label
+# on an issue: approve, hold or delist. Only people with write access can add labels.
 on:
   issues:
     types: [opened, labeled]
@@ -15,9 +16,9 @@ concurrency:
 
 jobs:
   handle:
-    if: github.event.action == 'opened' || github.event.label.name == 'delist'
+    if: github.event.action == 'opened' || contains(fromJSON('["approve","hold","delist"]'), github.event.label.name)
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,6 +30,7 @@ jobs:
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
           ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
         run: node generator/submit.js
       - name: Save the list
         if: steps.check.outputs.changed == 'true'
@@ -45,6 +47,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ github.event.issue.number }}
           CLOSE: ${{ steps.check.outputs.close }}
+          TAG: ${{ steps.check.outputs.tag }}
         run: |
           gh issue comment "$NUMBER" --body-file reply.md -R "$GITHUB_REPOSITORY"
+          if [ -n "$TAG" ]; then gh issue edit "$NUMBER" --add-label "$TAG" -R "$GITHUB_REPOSITORY"; fi
           if [ "$CLOSE" = "true" ]; then gh issue close "$NUMBER" -R "$GITHUB_REPOSITORY"; fi

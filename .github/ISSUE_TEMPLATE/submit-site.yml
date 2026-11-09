@@ -6,7 +6,9 @@ body:
     attributes:
       value: |
         Only sites made with **Terminal Web Builder** can be added. A robot checks the site
-        and answers here within a few minutes.
+        against the [directory rules](https://leiadigitalmediainc.github.io/Terminal_Web_Sites/directory/rules.html)
+        and answers here within a few minutes. Sites that may break the rules are held for a
+        person to review.
   - type: input
     id: url
     attributes:
@@ -15,3 +17,10 @@ body:
       placeholder: https://yourname.github.io/my-site/
     validations:
       required: true
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Directory rules
+      options:
+        - label: My site follows the [Terminal Directory rules](https://leiadigitalmediainc.github.io/Terminal_Web_Sites/directory/rules.html) - no hate speech, threats, sexual content, illegal goods, scams, private information or pirated material.
+          required: true

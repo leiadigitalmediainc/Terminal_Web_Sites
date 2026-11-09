@@ -1,0 +1,42 @@
+{
+  "_about": "Words and phrases that hold a Terminal Directory site for a person to review (see rules.md). Matched as whole words, ignoring case, accents, repeated letters and common letter swaps (0=o, 1=i, 3=e, 4=a, 5=s, @=a, $=s). A match never deletes anything: it only holds the site until someone looks. Add terms to a category as needed.",
+  "categories": {
+    "hate speech": [
+      "nigger", "nigga", "chink", "gook", "spic", "wetback", "kike", "faggot", "fag", "tranny",
+      "raghead", "towelhead", "sand nigger", "porch monkey", "jungle bunny", "beaner", "paki",
+      "kaffir", "coon", "retard", "white power", "heil hitler", "sieg heil", "1488",
+      "fourteen words", "race war", "gas the jews", "kill all jews", "kill all muslims",
+      "great replacement", "subhuman"
+    ],
+    "violence and threats": [
+      "how to make a bomb", "pipe bomb instructions", "i will kill you", "kill yourself", "kys",
+      "school shooting", "mass shooting plan", "join isis", "join the jihad"
+    ],
+    "sexual content involving minors": [
+      "child porn", "child pornography", "cp links", "pthc", "jailbait", "lolicon", "shotacon",
+      "preteen nude", "preteen sex", "underage nude", "underage sex", "teen nudes"
+    ],
+    "sexually explicit content": [
+      "porn", "porno", "pornhub", "xxx", "hardcore sex", "nude pics", "nudes for sale",
+      "onlyfans leak", "sex cam", "escort service"
+    ],
+    "illegal goods and services": [
+      "buy cocaine", "buy heroin", "buy meth", "buy fentanyl", "buy mdma", "buy lsd",
+      "cocaine for sale", "drugs for sale", "pills for sale", "guns for sale", "buy guns online",
+      "ghost gun", "stolen credit cards", "carding", "cvv dumps", "fullz", "counterfeit money",
+      "fake passport", "fake id for sale", "hacker for hire", "hire a hacker", "hitman for hire",
+      "ddos for hire", "booter", "dark web market"
+    ],
+    "scams and harmful software": [
+      "free robux", "free v-bucks", "crypto doubler", "double your bitcoin", "bitcoin doubler",
+      "send bitcoin and receive", "keylogger download", "rat download", "cracked software",
+      "warez", "keygen", "free gift card generator"
+    ],
+    "private information": [
+      "dox", "doxx", "doxxed", "home address of", "social security number", "ssn leak"
+    ],
+    "pirated material": [
+      "free movie download", "torrent download", "full movie free", "pirated", "piratebay"
+    ]
+  }
+}

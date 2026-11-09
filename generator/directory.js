@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { COLS, Page, clean, cut, stamp } = require('./lib');
+const { screen, describe } = require('./screen');
 
 const MAX_PAGES = 25;          // pages read from each site
 const MAX_TEXT = 4000;         // characters of each page kept for searching
@@ -74,8 +75,44 @@ async function crawl(start) {
   return pages;
 }
 
+const LIST_FILE = path.join(__dirname, '..', 'directory', 'sites.json');
+const RULES_URL = 'https://leiadigitalmediainc.github.io/Terminal_Web_Sites/directory/rules.html';
+
+// Everything a site says, checked against the rules.
+const siteHits = (pages) => screen(...pages.map(p => p.title + '\n' + p.about + '\n' + p.text));
+
+// The rules (directory/rules.md) as a page Terminal Web shows like any other.
+function writeRules(outDir) {
+  const page = new Page('directory/rules.html', 'Terminal Directory rules');
+  // paragraphs and list items are joined up, then wrapped to the page width
+  const blocks = [];
+  for (const raw of fs.readFileSync(path.join(__dirname, '..', 'directory', 'rules.md'), 'utf8').replace(/\r/g, '').split('\n')) {
+    const line = raw.replace(/\*\*/g, '').trim();
+    if (!line) { blocks.push(null); continue; }
+    const last = blocks[blocks.length - 1];
+    if (/^(#|\d+\.|- )/.test(line) || !last || last.heading) blocks.push({ heading: /^#/.test(line), text: line });
+    else last.text += ' ' + line;
+  }
+  for (const b of blocks) {
+    if (!b) { page.blank(); continue; }
+    if (/^# /.test(b.text)) { page.text(b.text.slice(2).toUpperCase()).rule('═'); continue; }
+    if (/^## /.test(b.text)) { page.text(b.text.slice(3).toUpperCase()).rule(); continue; }
+    const item = /^(\d+\.|-) /.exec(b.text);
+    const indent = item ? ' '.repeat(item[0].length) : '';
+    const words = (item ? b.text.slice(item[0].length) : b.text).split(' ');
+    let row = item ? (item[1] === '-' ? '• ' : item[0]) : '';
+    for (const w of words) {
+      if (row.trim() && Array.from(row + ' ' + w).length > COLS) { page.text(row); row = indent + w; }
+      else row += (row && !/ $/.test(row) ? ' ' : '') + w;
+    }
+    if (row.trim()) page.text(row);
+  }
+  page.blank().bar([{ label: 'Back to the directory', href: 'index.html' }]);
+  page.write(outDir);
+}
+
 async function buildDirectory(outDir, dataDir) {
-  const list = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'directory', 'sites.json'), 'utf8'));
+  const list = JSON.parse(fs.readFileSync(LIST_FILE, 'utf8'));
   const cacheFile = path.join(dataDir, 'directory-index.json');
   let cache = {};
   try { cache = JSON.parse(fs.readFileSync(cacheFile, 'utf8')); } catch (e) { /* first run */ }
@@ -92,7 +129,24 @@ async function buildDirectory(outDir, dataDir) {
   const before = JSON.stringify(cache), after = JSON.stringify(fresh);
   if (before !== after) fs.writeFileSync(cacheFile, after);
 
-  const sites = list.sites.map(s => {
+  // A listed site whose words now break the rules is hidden until a person looks. Words that
+  // were there when the site was approved (approvedTerms) are not counted again.
+  const newHolds = [];
+  for (const s of list.sites) {
+    if (s.held || s.trusted) continue;   // trusted: our own sites, e.g. T-News reports real news
+    const pages = (fresh[s.url] || {}).pages || [];
+    const hits = siteHits(pages).filter(h => !(s.approvedTerms || []).includes(h.term));
+    if (!hits.length) continue;
+    s.held = { reason: describe(hits), since: new Date().toISOString().slice(0, 10), by: 'daily check' };
+    newHolds.push({ url: s.url, reason: s.held.reason });
+  }
+  if (newHolds.length) {
+    fs.writeFileSync(LIST_FILE, JSON.stringify(list, null, 2) + '\n');
+    fs.writeFileSync(path.join(__dirname, '..', 'new-holds.json'), JSON.stringify(newHolds));
+  }
+
+  writeRules(outDir);
+  const sites = list.sites.filter(s => !s.held).map(s => {
     const pages = (fresh[s.url] || {}).pages || [];
     if (!pages.length) return null;
     const first = pages[0];
@@ -109,7 +163,7 @@ async function buildDirectory(outDir, dataDir) {
   page.text('╔' + '═'.repeat(COLS - 2) + '╗', '║' + ' '.repeat(pad) + name + ' '.repeat(COLS - 2 - pad - name.length) + '║', '╚' + '═'.repeat(COLS - 2) + '╝', '');
   page.text('Sites made with Terminal Web Builder, from A to Z. ' + sites.length + (sites.length === 1 ? ' site.' : ' sites.'));
   page.text('In Terminal Web, type td and your words in the address bar to search them all.').blank();
-  page.bar([{ label: 'Add your site', href: SUBMIT_FORM }]);
+  page.bar([{ label: 'Add your site', href: SUBMIT_FORM }, { label: 'Directory rules', href: 'rules.html' }]);
   page.rule().blank();
   let letter = '';
   for (const s of sites) {
@@ -125,4 +179,4 @@ async function buildDirectory(outDir, dataDir) {
   return { sites: sites.length };
 }
 
-module.exports = { buildDirectory, siteAddress, sameSite, isBuilderPage, getPage, SUBMIT_FORM };
+module.exports = { buildDirectory, siteAddress, sameSite, isBuilderPage, getPage, crawl, siteHits, SUBMIT_FORM, RULES_URL, LIST_FILE };
