@@ -76,7 +76,8 @@ class Page {
       (this.description ? '<meta name="description" content="' + esc(this.description) + '">\n' : '') +
       '<title>' + esc(this.title) + '</title>\n' +
       '<style>\nbody{background:#000;color:#c68039;margin:0;padding:16px}\na{color:#5c9cc7}\n' +
-      'pre{font-family:Consolas,"Courier New",monospace;font-size:16px;line-height:1.15;margin:0;overflow-x:auto}\n' +
+      // the page sits in the middle of a wide window, and still scrolls sideways on a narrow one
+      'pre{font-family:Consolas,"Courier New",monospace;font-size:16px;line-height:1.15;margin:0 auto;width:max-content;max-width:100%;overflow-x:auto}\n' +
       '</style>\n</head>\n<body>\n<pre>' + body + '</pre>\n</body>\n</html>\n';
   }
   write(outDir) {
